@@ -1,9 +1,0 @@
-spring:
-  jackson:
-    deserialization:
-      accept-float-as-int: false
-  application:
-    name: Actividad01
-
-  profiles:
-    active: dev

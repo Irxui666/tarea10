@@ -70,7 +70,6 @@ public class VentaServiceImpl implements VentaService {
         if (request.getDetalles().stream().map(DetalleVentaRequestDTO::getProductoId).distinct().count() != request.getDetalles().size()) {
             throw new ReglaNegocioException("Un producto no puede repetirse en el detalle");
         }
-        // El orden uniforme reduce el riesgo de interbloqueos entre cajas.
         for (DetalleVentaRequestDTO item : request.getDetalles().stream()
                 .sorted(java.util.Comparator.comparing(DetalleVentaRequestDTO::getProductoId)).toList()) {
             Producto producto = productoRepository.findById(item.getProductoId()).orElseThrow(() ->

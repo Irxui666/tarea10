@@ -40,14 +40,12 @@ public class ClienteServiceImpl implements ClienteService {
                 .trim()
                 .toLowerCase();
 
-        // Regla de negocio 1
         if (clienteRepository.existsByDni(dni)) {
             throw new ReglaNegocioException(
                     "Ya existe un cliente con el DNI: " + dni
             );
         }
 
-        // Regla de negocio 2
         if (clienteRepository.existsByEmailIgnoreCase(email)) {
             throw new ReglaNegocioException(
                     "Ya existe un cliente con el correo: " + email
@@ -131,7 +129,6 @@ public class ClienteServiceImpl implements ClienteService {
                 .trim()
                 .toLowerCase();
 
-        // DNI de otro cliente
         if (clienteRepository
                 .existsByDniAndIdNot(dni, id)) {
 
@@ -141,7 +138,6 @@ public class ClienteServiceImpl implements ClienteService {
             );
         }
 
-        // Email de otro cliente
         if (clienteRepository
                 .existsByEmailIgnoreCaseAndIdNot(
                         email,

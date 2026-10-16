@@ -20,15 +20,21 @@ class VentasIntegrationTest {
     final HttpClient client = HttpClient.newHttpClient();
     final ObjectMapper json = new ObjectMapper();
     long clienteId, categoriaId, productoId;
+    String token;
     record Respuesta(int estado, JsonNode body) {}
     Respuesta call(String method, String path, String body) throws Exception {
         var req = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/" + path))
                 .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + (token == null ? "" : token))
                 .method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body)).build();
         var res = client.send(req, HttpResponse.BodyHandlers.ofString());
         return new Respuesta(res.statusCode(), res.body().isEmpty() ? null : json.readTree(res.body()));
     }
     @BeforeEach void preparar() throws Exception {
+        token = null;
+        var login = call("POST", "auth/login", "{\"username\":\"admin\",\"password\":\"Admin2026*\"}");
+        assertEquals(200, login.estado());
+        token = login.body().get("token").asText();
         String uid = UUID.randomUUID().toString();
         var c = call("POST", "categorias", "{\"nombre\":\"Cat " + uid + "\",\"estado\":true}");
         assertEquals(201, c.estado()); categoriaId = c.body().get("id").asLong();
@@ -98,5 +104,10 @@ class VentasIntegrationTest {
         var report=call("GET","reportes/ventas-por-categoria",null).body();boolean encontrado=false;
         for(var row:report)if(row.get("categoriaId").asLong()==categoriaId){encontrado=true;assertEquals(3,row.get("cantidadTotal").asInt());assertEquals(37.50,row.get("montoTotal").asDouble());}
         assertTrue(encontrado);
+    }
+    @Test void rechazaCantidadDecimalSinDescontarStock() throws Exception {
+        String body="{\"clienteId\":"+clienteId+",\"detalles\":[{\"productoId\":"+productoId+",\"cantidad\":2.5}]}";
+        assertEquals(400,call("POST","ventas",body).estado());
+        assertEquals(10,stock(productoId));
     }
 }

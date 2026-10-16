@@ -1,0 +1,89 @@
+package com.example.Actividad01.service.impl;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import com.example.Actividad01.dto.auth.LoginRequestDTO;
+import com.example.Actividad01.dto.auth.LoginResponseDTO;
+import com.example.Actividad01.dto.auth.UsuarioResponseDTO;
+import com.example.Actividad01.entity.Usuario;
+import com.example.Actividad01.exception.RecursosNoEncontradoException;
+import com.example.Actividad01.mapper.UsuarioMapper;
+import com.example.Actividad01.repository.UsuarioRepository;
+import com.example.Actividad01.security.JwtService;
+import com.example.Actividad01.security.PermisosPorRol;
+import com.example.Actividad01.service.service.AuthService;
+
+import java.util.List;
+
+@Service
+public class AuthServiceImpl implements AuthService {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(AuthServiceImpl.class);
+
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+    private final UsuarioRepository usuarioRepository;
+    private final UsuarioMapper usuarioMapper;
+
+    public AuthServiceImpl(
+            AuthenticationManager authenticationManager,
+            JwtService jwtService,
+            UsuarioRepository usuarioRepository,
+            UsuarioMapper usuarioMapper) {
+        this.authenticationManager = authenticationManager;
+        this.jwtService = jwtService;
+        this.usuarioRepository = usuarioRepository;
+        this.usuarioMapper = usuarioMapper;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LoginResponseDTO login(LoginRequestDTO request) {
+
+        String username = request.getUsername().trim();
+
+        log.info("Intento de inicio de sesión: usuario={}", username);
+
+        Authentication autenticacion = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(username, request.getPassword()));
+
+        UserDetails principal = (UserDetails) autenticacion.getPrincipal();
+        Usuario usuario = buscar(principal.getUsername());
+
+        String token = jwtService.generarToken(principal);
+
+        List<String> roles = usuarioMapper.nombresRoles(usuario.getRoles());
+
+        log.info("Inicio de sesión correcto: usuario={} roles={}",
+                usuario.getUsername(), roles);
+
+        return new LoginResponseDTO(
+                token,
+                "Bearer",
+                jwtService.getExpiracionSegundos(),
+                usuario.getUsername(),
+                usuario.getEmpleado().getNombreCompleto(),
+                roles,
+                PermisosPorRol.permisos(usuario.getRoles())
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UsuarioResponseDTO usuarioActual(String username) {
+        return usuarioMapper.toUsuarioResponse(buscar(username));
+    }
+
+    private Usuario buscar(String username) {
+        return usuarioRepository.findByUsernameIgnoreCase(username)
+                .orElseThrow(() -> new RecursosNoEncontradoException(
+                        "Usuario no encontrado: " + username));
+    }
+}

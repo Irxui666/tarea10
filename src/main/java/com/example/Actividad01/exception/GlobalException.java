@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-// El manejo HTTP centralizado reside en GlobalExceptionHandler.
 
 public class GlobalException {
 
